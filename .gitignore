@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+frontend/dist
+frontend/dist-ssr
+*.local
+
+# Environment variables & secrets
+.env
+.env*.local
+!.env.example
+!.env.development
+!.env.simulation
+!.env.production.example
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Storage / Media / Runtime data
+storage/media/captures/*
+!storage/media/captures/.gitkeep
+storage/media/uploads/*
+!storage/media/uploads/.gitkeep
+*.log
+logs/
+
+# Database data
+pgdata/
+*.sqlite3
+
+# Testing & Coverage
+.coverage
+htmlcov/
+.pytest_cache/

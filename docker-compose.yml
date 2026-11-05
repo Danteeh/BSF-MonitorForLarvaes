@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bsf_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bsf_monitor}
+      POSTGRES_USER: ${POSTGRES_USER:-bsf_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bsf_sim_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bsf_user} -d ${POSTGRES_DB:-bsf_monitor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bsf_network
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: bsf_mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./infrastructure/docker/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -i healthcheck || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - bsf_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: bsf_backend
+    restart: unless-stopped
+    env_file:
+      - .env.simulation
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-bsf_user}:${POSTGRES_PASSWORD:-bsf_sim_password}@postgres:5432/${POSTGRES_DB:-bsf_monitor}
+      - MQTT_HOST=mosquitto
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage/media:/app/storage/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/system/status')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bsf_network
+
+  simulator:
+    build:
+      context: .
+      dockerfile: simulator/Dockerfile
+    container_name: bsf_simulator
+    restart: unless-stopped
+    env_file:
+      - .env.simulation
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+    depends_on:
+      - mosquitto
+    networks:
+      - bsf_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bsf_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - bsf_network
+
+volumes:
+  postgres_data:
+  mosquitto_data:
+  mosquitto_log:
+
+networks:
+  bsf_network:
+    driver: bridge
