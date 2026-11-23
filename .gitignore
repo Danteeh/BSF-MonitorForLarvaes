@@ -67,3 +67,8 @@ pgdata/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Archives
+*.rar
+*.zip
+
